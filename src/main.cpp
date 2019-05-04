@@ -3,16 +3,30 @@
 
 #include <Arduino.h>
 
-#include <WiFi.h>
-#include <esp_http_server.h>
+#include <ESP8266WiFi.h>
+#include <ESP8266WebServer.h>
 
 #include <FastLED.h>
 
+#include "ledcontroller.h"
+
 FASTLED_USING_NAMESPACE
 
-static constexpr auto NUM_LEDS = 100;
+constexpr auto WIFI_SSID = "McDonalds Free WiFi 2.4GHz";
+constexpr auto WIFI_PASSWD = "Passwort_123";
+
+LedController ledController;
+
+constexpr auto pin = 0;
+constexpr auto NUM_LEDS = 100;
 
 std::array<CRGB, NUM_LEDS> leds;
+
+ESP8266WebServer server(80);
+
+uint8_t gHue = 0;
+
+bool rotatePattern = true;
 
 void addGlitter(fract8 chanceOfGlitter)
 {
@@ -20,9 +34,7 @@ void addGlitter(fract8 chanceOfGlitter)
         leds[random16(leds.size())] += CRGB::White;
 }
 
-static uint8_t gHue = 0;
-
-static const std::array<std::function<void()>, 7> patterns {
+const std::array<std::function<void()>, 7> patterns {
     []()
     {
         fill_rainbow(&leds[0], leds.size(), gHue, 7);
@@ -100,9 +112,7 @@ static const std::array<std::function<void()>, 7> patterns {
     }
 };
 
-static auto iter = patterns.begin();
-
-static bool rotatePattern = true;
+auto iter = patterns.begin();
 
 void nextPattern()
 {
@@ -111,141 +121,121 @@ void nextPattern()
         iter = patterns.begin();
 }
 
-static esp_err_t index_handler(httpd_req_t *req)
+void index_handler()
 {
-
-    static const char *index1 = "<html>"
-                               "<head>"
-                               "</head>"
-                               "<body>"
-                               "<h1>Total Entchen-Control 1.0</h1>"
-                               "<p>"
-                               "<a href=\"cmd?var=nextPattern&val=\">Next pattern</a> ";
-
-    static const char *turnOn = "<a href=\"cmd?var=rotatePattern&val=true\">Enable pattern rotate</a> ";
-    static const char *turnOff = "<a href=\"cmd?var=rotatePattern&val=false\">Disable pattern rotate</a>";
-
-    static const char *index2 = "</p>"
-                               "<form action=\"cmd\" method=\"GET\">"
-                               "<input type=\"hidden\" name=\"var\" value=\"setPattern\" />"
-                               "<select name=\"val\" size=\"7\">"
-                               "<option value=\"0\">rainbow</option>"
-                               "<option value=\"1\">rainbowWithGlitter</option>"
-                               "<option value=\"2\">confetti</option>"
-                               "<option value=\"3\">sinelon</option>"
-                               "<option value=\"4\">juggle</option>"
-                               "<option value=\"5\">bpm</option>"
-                               "<option value=\"6\">Fire2012</option>"
-                               "</select>"
-                               "<button type=\"submit\">submit</button>"
-                               "</form>"
-                               "</body>"
-                               "</html>";
-
-    String str = index1;
+    String str = "<html>"
+                 "<head>"
+                 "</head>"
+                 "<body>"
+                 "<h1>Total Entchen-Control 1.0</h1>"
+                 "<p>"
+                 "<a href=\"cmd?var=nextPattern&val=\">Next pattern</a> ";
     if (rotatePattern)
-        str += turnOff;
+        str += "<a href=\"cmd?var=rotatePattern&val=false\">Disable pattern rotate</a>";
     else
-        str += turnOn;
-    str += index2;
+        str += "<a href=\"cmd?var=rotatePattern&val=true\">Enable pattern rotate</a> ";
 
-    return httpd_resp_send(req, str.c_str(), str.length());
+    const auto index = std::distance(patterns.begin(), iter);
+
+    str += "</p>"
+           "<form action=\"cmd\" method=\"GET\">"
+           "<input type=\"hidden\" name=\"var\" value=\"setPattern\" />"
+           "<select name=\"val\" size=\"7\">"
+           "<option value=\"0\"";
+    if (index == 0)
+        str += " selected";
+    str += ">rainbow</option>"
+           "<option value=\"1\"";
+    if (index == 1)
+        str += " selected";
+    str += ">rainbowWithGlitter</option>"
+           "<option value=\"2\"";
+    if (index == 2)
+        str += " selected";
+    str += ">confetti</option>"
+           "<option value=\"3\"";
+    if (index == 3)
+        str += " selected";
+    str += ">sinelon</option>"
+           "<option value=\"4\"";
+    if (index == 4)
+        str += " selected";
+    str += ">juggle</option>"
+           "<option value=\"5\"";
+    if (index == 5)
+        str += " selected";
+    str += ">bpm</option>"
+           "<option value=\"6\"";
+    if (index == 6)
+        str += " selected";
+    str += ">Fire2012</option>"
+           "</select>"
+           "<button type=\"submit\">submit</button>"
+           "</form>"
+           "</body>"
+           "</html>";
+
+    server.sendHeader("Connection", "close");
+    server.send(200, "text/html", str.c_str());
 }
 
-static esp_err_t status_handler(httpd_req_t *req)
+void cmd_handler()
 {
-    return httpd_resp_send(req, "statu2", 6);
-}
+    server.sendHeader("Connection", "close");
 
-static esp_err_t cmd_handler(httpd_req_t *req)
-{
-    char*  buf;
-    size_t buf_len;
-    char variable[32] = {0,};
-    char value[32] = {0,};
+    const String *var = nullptr;
+    const String *val = nullptr;
 
-    buf_len = httpd_req_get_url_query_len(req) + 1;
-    if (buf_len > 1) {
-        buf = (char*)malloc(buf_len);
-        if(!buf){
-            httpd_resp_send_500(req);
-            return ESP_FAIL;
-        }
-        if (httpd_req_get_url_query_str(req, buf, buf_len) == ESP_OK) {
-            if (httpd_query_key_value(buf, "var", variable, sizeof(variable)) == ESP_OK &&
-                httpd_query_key_value(buf, "val", value, sizeof(value)) == ESP_OK) {
-            } else {
-                free(buf);
-                httpd_resp_send_404(req);
-                return ESP_FAIL;
-            }
-        } else {
-            free(buf);
-            httpd_resp_send_404(req);
-            return ESP_FAIL;
-        }
-        free(buf);
-    } else {
-        httpd_resp_send_404(req);
-        return ESP_FAIL;
+    for (int i = 0; i < server.args(); i++)
+    {
+        if (server.argName(i) == "var")
+            var = &server.arg(i);
+        else if (server.argName(i) == "val")
+            val = &server.arg(i);
     }
 
-    if (!strcmp(variable, "nextPattern"))
+    if (var == nullptr || val == nullptr)
+        server.send(400, "text/html", "var or val missing");
+
+    if (*var == "nextPattern")
     {
         nextPattern();
-        return httpd_resp_send(req, "ok1", 3);
+        server.send(200, "text/html", "ok");
+        return;
     }
-    else if (!strcmp(variable, "setPattern"))
+    else if (*var == "setPattern")
     {
-        const auto val = atoi(value);
-        if (val >= patterns.size())
-            return httpd_resp_send_500(req);
+        const auto index = atoi(val->c_str());
+        if (index < 0 || index >= patterns.size())
+        {
+            server.send(500, "text/html", "out of range");
+            return;
+        }
 
-        iter = patterns.begin() + val;
+        iter = patterns.begin() + index;
 
-        return httpd_resp_send(req, "ok2", 3);
+        server.send(200, "text/html", "ok");
+        return;
     }
-    else if (!strcmp(variable, "rotatePattern"))
+    else if (*var == "rotatePattern")
     {
-        rotatePattern = !strcmp(value, "true");
-        return httpd_resp_send(req, "ok3", 3);
+        rotatePattern = *val == "true";
+        server.send(200, "text/html", "ok");
+        return;
     }
 
-    return httpd_resp_send_500(req);
+    server.send(500, "text/html", "unknown var");
 }
 
 void setup()
 {
-    WiFi.begin("realraum", "r3alraum");
+    WiFi.begin(WIFI_SSID, WIFI_PASSWD);
 
-    FastLED.addLeds<WS2811, 16, RGB>(&leds[0], leds.size()).setCorrection(TypicalLEDStrip);
+    FastLED.addLeds<WS2812, pin, RGB>(&leds[0], leds.size()).setCorrection(TypicalLEDStrip);
 
-    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    httpd_handle_t webserver;
-
-    {
-        const esp_err_t error = httpd_start(&webserver, &config);
-        if (error != ESP_OK)
-        {
-            Serial.println("could not start webserver");
-            Serial.println(error);
-        }
-    }
-
-    for (const httpd_uri_t &uri : {
-         httpd_uri_t { "/",        HTTP_GET, index_handler,   NULL },
-         httpd_uri_t { "/status",  HTTP_GET, status_handler,  NULL },
-         httpd_uri_t { "/cmd",     HTTP_GET, cmd_handler,     NULL }
-    })
-    {
-        const esp_err_t error = httpd_register_uri_handler(webserver, &uri);
-        if (error != ESP_OK)
-        {
-            Serial.print("error registering uri ");
-            Serial.println(uri.uri);
-            Serial.println(error);
-        }
-    }
+    server.on("/", HTTP_GET, index_handler);
+    server.on("/cmd", HTTP_GET, cmd_handler);
+    server.begin();
 }
   
 void loop()
@@ -263,5 +253,7 @@ void loop()
             nextPattern();
         }
     }
+
+    server.handleClient();
 }
 
