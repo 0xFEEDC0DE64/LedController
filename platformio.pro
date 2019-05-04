@@ -64,13 +64,14 @@ DEFINES += "VTABLES_IN_FLASH"
 
 OTHER_FILES += platformio.ini
 
-SOURCES += src/main.cpp
+HEADERS += src/ledsettings.h
 HEADERS += src/ledcontroller.h
 HEADERS += src/pattern.h
-HEADERS += src/patterns/rainbowpattern.h
-HEADERS += src/patterns/rainbowwithglitterpattern.h
+SOURCES += src/main.cpp
 HEADERS += src/patterns/confettipattern.h
+HEADERS += src/patterns/fire2012pattern.h
 HEADERS += src/patterns/sineleonpattern.h
+HEADERS += src/patterns/rainbowpattern.h
 HEADERS += src/patterns/jugglepattern.h
 HEADERS += src/patterns/bpmpattern.h
-HEADERS += src/patterns/fire2012pattern.h
+HEADERS += src/patterns/rainbowwithglitterpattern.h
