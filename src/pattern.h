@@ -4,7 +4,7 @@
 
 class Pattern {
 public:
-    Pattern(LedContainer leds) :
+    Pattern(LedContainer &leds) :
         leds(leds)
     {
     }

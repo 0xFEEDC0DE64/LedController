@@ -16,11 +16,51 @@
 
 FASTLED_USING_NAMESPACE
 
+class RGBTest : public Pattern
+{
+public:
+    using Pattern::Pattern;
+
+    const char * name() const override
+    {
+        return "rgbtest";
+    }
+
+    void run() override
+    {
+        CRGB color;
+        switch(m_index)
+        {
+        case 0:
+        case 1:
+            color = CRGB::Red;
+            break;
+        case 2:
+            color = CRGB::Green;
+            break;
+        case 3:
+            color = CRGB::Blue;
+        }
+
+        fill_solid(&leds[0], NUM_LEDS, color);
+
+        EVERY_N_SECONDS(1)
+        {
+            m_index++;
+            if (m_index >= 4)
+                m_index = 0;
+        }
+    }
+
+private:
+    int m_index = 0;
+};
+
 class LedController
 {
 public:
     LedController() :
-        controller(FastLED.addLeds<WS2812, pin, RGB>(&leds[0], leds.size())),
+        controller(FastLED.addLeds<WS2812, pin, BRG>(&leds[0], leds.size())),
         m_rainbow(leds),
         m_rainbowWithGlitter(leds),
         m_confetti(leds),
@@ -28,7 +68,8 @@ public:
         m_juggle(leds),
         m_bpm(leds),
         m_fire2012(leds),
-        patterns { &m_rainbow, &m_rainbowWithGlitter, &m_confetti, &m_sineleon, &m_juggle, &m_bpm, &m_fire2012 },
+        m_rgbtest(leds),
+        patterns { &m_rainbow, &m_rainbowWithGlitter, &m_confetti, &m_sineleon, &m_juggle, &m_bpm, &m_fire2012, &m_rgbtest },
         iter(patterns.begin())
     {
         controller.setCorrection(TypicalLEDStrip);
@@ -62,8 +103,10 @@ private:
     JugglePattern m_juggle;
     BpmPattern m_bpm;
     Fire2012Pattern m_fire2012;
+    RGBTest m_rgbtest;
 
 public:
+    using PatternContainer = std::array<Pattern*, 8>;
     const PatternContainer patterns;
     PatternContainer::const_iterator iter;
 };
