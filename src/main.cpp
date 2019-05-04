@@ -15,6 +15,7 @@ LedController ledController;
 
 ESP8266WebServer server(80);
 
+bool power = true;
 bool rotatePattern = true;
 
 void setup()
@@ -48,8 +49,10 @@ void setup()
                             "<div class=\"container\">"
                                 "<h1>Hello, world!</h1>"
                                 "<p>"
-                                    "<a href=\"nextPattern\" class=\"softLink\">Next pattern</a>"
-                                    "<a href=\"setPatternRotate?val=true\" id=\"enableRotate\" class=\"softLink\">Enable automatic pattern rotate</a>"
+                                    "<a href=\"setPower?val=true\" id=\"enablePower\" class=\"softLink\">Turn LEDs on</a> "
+                                    "<a href=\"setPower?val=false\" id=\"disablePower\" class=\"softLink\">Turn LEDs off</a> "
+                                    "<a href=\"nextPattern\" id=\"nextPattern\" class=\"softLink\">Next pattern</a> "
+                                    "<a href=\"setPatternRotate?val=true\" id=\"enableRotate\" class=\"softLink\">Enable automatic pattern rotate</a> "
                                     "<a href=\"setPatternRotate?val=false\" id=\"disableRotate\" class=\"softLink\">Disable automatic pattern rotate</a>"
                                 "</p>"
 
@@ -87,13 +90,21 @@ void setup()
                                         "xhr.onload = function() {"
                                             "var parsed = JSON.parse(xhr.responseText);"
 
-                                            "if (parsed.autoRotate) {"
-                                                "$('#enableRotate').addClass('hidden');"
-                                                "$('#disableRotate').removeClass('hidden');"
-                                            "} else {"
-                                                "$('#enableRotate').removeClass('hidden');"
-                                                "$('#disableRotate').addClass('hidden');"
+                                            "function setHidden(element, hidden) {"
+                                                "if (hidden) {"
+                                                    "element.addClass('hidden');"
+                                                "} else {"
+                                                    "element.removeClass('hidden');"
+                                                "}"
                                             "}"
+
+                                            "setHidden($('#enablePower'), parsed.power);"
+                                            "setHidden($('#disablePower'), !parsed.power);"
+                                            "setHidden($('#nextPattern'), !parsed.power);"
+                                            "setHidden($('#enableRotate'), !parsed.power || parsed.autoRotate);"
+                                            "setHidden($('#disableRotate'), !parsed.power || !parsed.autoRotate);"
+                                            "setHidden($('#patternSelect'), !parsed.power);"
+                                            "setHidden($('#brightness'), !parsed.power);"
 
                                             "var select = $('#patternSelect');"
                                             "select.empty();"
@@ -145,6 +156,10 @@ void setup()
         }
         str += "],";
 
+        str += "\"power\":";
+        str += power ? "true" : "false";
+        str += ",";
+
         str += "\"autoRotate\":";
         str += rotatePattern ? "true" : "false";
         str += ",";
@@ -185,6 +200,31 @@ void setup()
         }
 
         ledController.iter = ledController.patterns.begin() + index;
+
+        server.send(200, "text/html", "ok");
+    });
+
+    server.on("/setPower", HTTP_GET, []()
+    {
+        const String *val = nullptr;
+
+        for (int i = 0; i < server.args(); i++)
+            if (server.argName(i) == "val")
+                val = &server.arg(i);
+
+        if (!val)
+        {
+            server.send(400, "text/html", "val missing");
+            return;
+        }
+
+        if (*val != "true" && *val != "false")
+        {
+            server.send(400, "text/html", "invalid val");
+            return;
+        }
+
+        power = *val == "true";
 
         server.send(200, "text/html", "ok");
     });
@@ -247,10 +287,14 @@ void loop()
 {
     EVERY_N_MILLISECONDS(20)
     {
-        ledController.run();
+        if (power)
+            ledController.run();
+        else
+            ledController.poweroff();
+        FastLED.show();
     }
 
-    if (rotatePattern)
+    if (power && rotatePattern)
     {
         EVERY_N_SECONDS(10)
         {

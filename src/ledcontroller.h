@@ -44,7 +44,11 @@ public:
     void run()
     {
         (*iter)->run();
-        FastLED.show();
+    }
+
+    void poweroff()
+    {
+        fill_solid(&leds[0], NUM_LEDS, CRGB::Black);
     }
 
 private:
