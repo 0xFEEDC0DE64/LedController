@@ -9,7 +9,7 @@ INCLUDEPATH += "$${HOMEDIR}/.platformio/packages/framework-arduinoespressif8266/
 INCLUDEPATH += "$${HOMEDIR}/.platformio/packages/framework-arduinoespressif8266/tools/sdk/libc/xtensa-lx106-elf/include"
 INCLUDEPATH += "$${HOMEDIR}/.platformio/packages/framework-arduinoespressif8266/cores/esp8266"
 INCLUDEPATH += "$${HOMEDIR}/.platformio/packages/framework-arduinoespressif8266/tools/sdk/lwip2/include"
-INCLUDEPATH += "$${HOMEDIR}/.platformio/packages/framework-arduinoespressif8266/variants/generic"
+INCLUDEPATH += "$${HOMEDIR}/.platformio/packages/framework-arduinoespressif8266/variants/d1_mini"
 INCLUDEPATH += "$${HOMEDIR}/LedController/lib/FastLED"
 INCLUDEPATH += "$${HOMEDIR}/.platformio/packages/framework-arduinoespressif8266/libraries/SoftwareSerial"
 INCLUDEPATH += "$${HOMEDIR}/.platformio/packages/framework-arduinoespressif8266/libraries/ESP8266WebServer/src"
@@ -49,13 +49,13 @@ INCLUDEPATH += "$${HOMEDIR}/LedController/src"
 DEFINES += "PLATFORMIO=30603"
 DEFINES += "ESP8266"
 DEFINES += "ARDUINO_ARCH_ESP8266"
-DEFINES += "ARDUINO_ESP8266_ESP01"
+DEFINES += "ARDUINO_ESP8266_WEMOS_D1MINI"
 DEFINES += "F_CPU=80000000L"
 DEFINES += "__ets__"
 DEFINES += "ICACHE_FLASH"
 DEFINES += "ARDUINO=10805"
-DEFINES += "ARDUINO_BOARD=&quot;PLATFORMIO_ESP01&quot;"
-DEFINES += "FLASHMODE_QIO"
+DEFINES += "ARDUINO_BOARD=&quot;PLATFORMIO_D1_MINI&quot;"
+DEFINES += "FLASHMODE_DIO"
 DEFINES += "LWIP_OPEN_SRC"
 DEFINES += "TCP_MSS=536"
 DEFINES += "LWIP_FEATURES=1"
@@ -64,14 +64,15 @@ DEFINES += "VTABLES_IN_FLASH"
 
 OTHER_FILES += platformio.ini
 
+HEADERS += src/pattern.h
 HEADERS += src/ledsettings.h
 HEADERS += src/ledcontroller.h
-HEADERS += src/pattern.h
 SOURCES += src/main.cpp
 HEADERS += src/patterns/confettipattern.h
 HEADERS += src/patterns/fire2012pattern.h
 HEADERS += src/patterns/sineleonpattern.h
 HEADERS += src/patterns/rainbowpattern.h
 HEADERS += src/patterns/jugglepattern.h
-HEADERS += src/patterns/bpmpattern.h
 HEADERS += src/patterns/rainbowwithglitterpattern.h
+HEADERS += src/patterns/bpmpattern.h
+HEADERS += src/patterns/plasmapattern.h

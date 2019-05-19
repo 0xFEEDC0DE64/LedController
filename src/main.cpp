@@ -14,6 +14,7 @@ constexpr auto WIFI_PASSWD = "Passwort_123";
 LedController ledController;
 
 ESP8266WebServer server(80);
+WiFiClient m_client;
 
 bool power = true;
 bool rotatePattern = true;
@@ -138,7 +139,7 @@ void setup()
     server.on("/update", HTTP_GET, []() {
       server.sendHeader("Connection", "close");
       server.send(200, "text/html",
-                  "<form method=\"POST\" action=\"/update\" enctype=\"multipart/form-data\">"
+                  "<form method=\"POST\" enctype=\"multipart/form-data\">"
                       "<input type=\"file\" name=\"update\" />"
                       "<button type=\"submit\">Install</button>"
                   "</form>");
@@ -172,6 +173,20 @@ void setup()
             Serial.setDebugOutput(false);
         }
         yield();
+    });
+
+    server.on("/reboot", HTTP_GET, []() {
+      server.sendHeader("Connection", "close");
+      server.send(200, "text/html",
+                  "<form method=\"POST\">"
+                      "<button type=\"submit\">Perform reboot</button>"
+                  "</form>");
+    });
+
+    server.on("/reboot", HTTP_POST, []() {
+        server.sendHeader("Connection", "close");
+        server.send(200, "text/plain", "OK");
+        ESP.restart();
     });
 
     server.on("/status", HTTP_GET, []()

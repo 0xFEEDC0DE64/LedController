@@ -13,6 +13,7 @@
 #include "patterns/jugglepattern.h"
 #include "patterns/bpmpattern.h"
 #include "patterns/fire2012pattern.h"
+#include "patterns/plasmapattern.h"
 
 FASTLED_USING_NAMESPACE
 
@@ -68,8 +69,9 @@ public:
         m_juggle(leds),
         m_bpm(leds),
         m_fire2012(leds),
+        m_plasma(leds),
         m_rgbtest(leds),
-        patterns { &m_rainbow, &m_rainbowWithGlitter, &m_confetti, &m_sineleon, &m_juggle, &m_bpm, &m_fire2012, &m_rgbtest },
+        patterns { &m_rainbow, &m_rainbowWithGlitter, &m_confetti, &m_sineleon, &m_juggle, &m_bpm, &m_fire2012, &m_plasma, &m_rgbtest },
         iter(patterns.begin())
     {
         controller.setCorrection(TypicalLEDStrip);
@@ -103,10 +105,11 @@ private:
     JugglePattern m_juggle;
     BpmPattern m_bpm;
     Fire2012Pattern m_fire2012;
+    PlasmaPattern m_plasma;
     RGBTest m_rgbtest;
 
 public:
-    using PatternContainer = std::array<Pattern*, 8>;
+    using PatternContainer = std::array<Pattern*, 9>;
     const PatternContainer patterns;
     PatternContainer::const_iterator iter;
 };
