@@ -7,6 +7,7 @@
 #include <ESP8266WebServer.h>
 
 #include "ledcontroller.h"
+#include "controlclient.h"
 
 constexpr auto WIFI_SSID = "McDonalds Free WiFi 2.4GHz";
 constexpr auto WIFI_PASSWD = "Passwort_123";
@@ -14,10 +15,11 @@ constexpr auto WIFI_PASSWD = "Passwort_123";
 LedController ledController;
 
 ESP8266WebServer server(80);
-WiFiClient m_client;
 
 bool power = true;
 bool rotatePattern = true;
+
+ControlClient client("daniel_ledstrip", power);
 
 void setup()
 {
@@ -281,7 +283,10 @@ void setup()
             return;
         }
 
-        power = *val == "true";
+        if (*val == "true")
+            client.on();
+        else
+            client.off();
 
         server.send(200, "text/html", "ok");
     });
@@ -359,6 +364,7 @@ void loop()
         }
     }
 
+    client.handleClient();
     server.handleClient();
 }
 

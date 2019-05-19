@@ -68,6 +68,7 @@ HEADERS += src/pattern.h
 HEADERS += src/ledsettings.h
 HEADERS += src/ledcontroller.h
 SOURCES += src/main.cpp
+HEADERS += src/controlclient.h
 HEADERS += src/patterns/confettipattern.h
 HEADERS += src/patterns/fire2012pattern.h
 HEADERS += src/patterns/sineleonpattern.h
