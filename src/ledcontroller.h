@@ -61,7 +61,7 @@ class LedController
 {
 public:
     LedController() :
-        controller(FastLED.addLeds<WS2812, pin, BRG>(&leds[0], leds.size())),
+        controller(FastLED.addLeds<WS2812, pin, RGB>(&leds[0], leds.size())),
         m_rainbow(leds),
         m_rainbowWithGlitter(leds),
         m_confetti(leds),

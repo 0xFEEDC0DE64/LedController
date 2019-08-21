@@ -3,18 +3,33 @@
 
 #include <Arduino.h>
 
+constexpr bool useRemoteServer = false;
+
+#ifdef ESP32
+#include <WiFi.h>
+#include <WebServer.h>
+#elif ESP8266
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
+#else
+#error "unknown board"
+#endif
 
 #include "ledcontroller.h"
 #include "controlclient.h"
 
-constexpr auto WIFI_SSID = "McDonalds Free WiFi 2.4GHz";
-constexpr auto WIFI_PASSWD = "Passwort_123";
+constexpr auto WIFI_SSID = "Camp2019-things";
+constexpr auto WIFI_PASSWD = "camp2019";
 
 LedController ledController;
 
+#ifdef ESP32
+WebServer server(80);
+#elif ESP8266
 ESP8266WebServer server(80);
+#else
+#error "unknown board"
+#endif
 
 bool power = true;
 bool rotatePattern = true;
@@ -138,6 +153,7 @@ void setup()
                     );
     });
 
+#if ESP8266
     server.on("/update", HTTP_GET, []() {
       server.sendHeader("Connection", "close");
       server.send(200, "text/html",
@@ -154,7 +170,6 @@ void setup()
     }, []() {
         HTTPUpload& upload = server.upload();
         if (upload.status == UPLOAD_FILE_START) {
-            Serial.setDebugOutput(true);
             Serial.printf("Update: %s\n", upload.filename.c_str());
 
             uint32_t maxSketchSpace = (ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000;
@@ -171,11 +186,10 @@ void setup()
             } else {
                 Update.printError(Serial);
             }
-
-            Serial.setDebugOutput(false);
         }
         yield();
     });
+#endif
 
     server.on("/reboot", HTTP_GET, []() {
       server.sendHeader("Connection", "close");
@@ -239,112 +253,103 @@ void setup()
 
     server.on("/setPattern", HTTP_GET, []()
     {
-        const String *val = nullptr;
-
         for (int i = 0; i < server.args(); i++)
             if (server.argName(i) == "val")
-                val = &server.arg(i);
+            {
+                const auto val = server.arg(i);
 
-        if (!val)
-        {
-            server.send(400, "text/html", "val missing");
-            return;
-        }
+                const auto index = atoi(val.c_str());
+                if (index < 0 || index >= ledController.patterns.size())
+                {
+                    server.send(400, "text/html", "out of range");
+                    return;
+                }
 
-        const auto index = atoi(val->c_str());
-        if (index < 0 || index >= ledController.patterns.size())
-        {
-            server.send(400, "text/html", "out of range");
-            return;
-        }
+                ledController.iter = ledController.patterns.begin() + index;
 
-        ledController.iter = ledController.patterns.begin() + index;
+                server.send(200, "text/html", "ok");
 
-        server.send(200, "text/html", "ok");
+                return;
+            }
+
+        server.send(400, "text/html", "val missing");
+
     });
 
     server.on("/setPower", HTTP_GET, []()
     {
-        const String *val = nullptr;
-
         for (int i = 0; i < server.args(); i++)
             if (server.argName(i) == "val")
-                val = &server.arg(i);
+            {
+                const auto val = server.arg(i);
 
-        if (!val)
-        {
-            server.send(400, "text/html", "val missing");
-            return;
-        }
+                if (val != "true" && val != "false")
+                {
+                    server.send(400, "text/html", "invalid val");
+                    return;
+                }
 
-        if (*val != "true" && *val != "false")
-        {
-            server.send(400, "text/html", "invalid val");
-            return;
-        }
+                if (val == "true")
+                    client.on();
+                else
+                    client.off();
 
-        if (*val == "true")
-            client.on();
-        else
-            client.off();
+                server.send(200, "text/html", "ok");
 
-        server.send(200, "text/html", "ok");
+                return;
+            }
+
+        server.send(400, "text/html", "val missing");
     });
 
     server.on("/setPatternRotate", HTTP_GET, []()
     {
-        const String *val = nullptr;
-
         for (int i = 0; i < server.args(); i++)
             if (server.argName(i) == "val")
-                val = &server.arg(i);
+            {
+                const auto val = server.arg(i);
 
-        if (!val)
-        {
-            server.send(400, "text/html", "val missing");
-            return;
-        }
+                if (val != "true" && val != "false")
+                {
+                    server.send(400, "text/html", "invalid val");
+                    return;
+                }
 
-        if (*val != "true" && *val != "false")
-        {
-            server.send(400, "text/html", "invalid val");
-            return;
-        }
+                rotatePattern = val == "true";
 
-        rotatePattern = *val == "true";
+                server.send(200, "text/html", "ok");
+            }
 
-        server.send(200, "text/html", "ok");
+        server.send(400, "text/html", "val missing");
     });
 
     server.on("/setBrightness", HTTP_GET, []()
     {
-        const String *val = nullptr;
-
         for (int i = 0; i < server.args(); i++)
             if (server.argName(i) == "val")
-                val = &server.arg(i);
+            {
+                const auto val = server.arg(i);
 
-        if (!val)
-        {
-            server.send(400, "text/html", "val missing");
-            return;
-        }
+                const auto brightness = atoi(val.c_str());
+                if (brightness < 0 || brightness > 255)
+                {
+                    server.send(400, "text/html", "out of range");
+                    return;
+                }
 
-        const auto brightness = atoi(val->c_str());
-        if (brightness < 0 || brightness > 255)
-        {
-            server.send(400, "text/html", "out of range");
-            return;
-        }
+                FastLED.setBrightness(brightness);
 
-        FastLED.setBrightness(brightness);
+                server.send(200, "text/html", "ok");
 
-        server.send(200, "text/html", "ok");
+                return;
+            }
+
+        server.send(400, "text/html", "val missing");
     });
 
     server.begin();
 }
-  
+
 void loop()
 {
     EVERY_N_MILLISECONDS(20)
@@ -364,7 +369,8 @@ void loop()
         }
     }
 
-    client.handleClient();
+    if (useRemoteServer)
+        client.handleClient();
     server.handleClient();
 }
 
